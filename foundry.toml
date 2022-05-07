@@ -2,5 +2,15 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+sender = '0xe7b30a037f5598e4e73702ca66a59af5cc650dcd'
+tx_origin = '0xe7b30a037f5598e4e73702ca66a59af5cc650dcd'
+remappings = [
+    'ds-test/=lib/forge-std/lib/ds-test/src/',
+    'forge-std/=lib/forge-std/src/',
+    '@openzeppelin=lib/openzeppelin-contracts/',
+    '@uniswap/v3-periphery=lib/v3-periphery/',
+    '@uniswap/v3-core=lib/v3-core/',
+]
+
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
