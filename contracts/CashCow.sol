@@ -9,7 +9,8 @@ pragma solidity  0.8.13;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
-
+import '../interfaces/IUniswapV3Pool.sol';
+import '../interfaces/IUniswapV3Factory.sol';
 
 contract CashCow is ERC721('Cash Cow Quest', 'COWQ') {
     address immutable zero = 0x0000000000000000000000000000000000000000;
