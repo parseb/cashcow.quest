@@ -23,4 +23,11 @@ contract CashCow is ERC721('Cash Cow Quest', 'COWQ') {
         UNISWAPV3_ADDRESS = _uniV3factory;
         DAIaddr = _dai;
     } 
+
+
+    
+
+
+
+
 }
