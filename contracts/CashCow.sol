@@ -3,7 +3,7 @@ pragma solidity 0.8.13;
 
 /// @title CashCow.quest main
 /// @author parseb.eth
-/// @notice VC seedstage prtocol
+/// @notice VC seedstage protocol
 /// @dev Experimental. Do not use.
 /// @custom:security contact: petra306@protonmail.com
 
@@ -14,9 +14,9 @@ import "../interfaces/IUniswapV3Pool.sol";
 import "../interfaces/IUniswapV3Factory.sol";
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
-    uint256 immutable MAXUINT = type(uint256).max;
-    address immutable UNISWAPV3_ADDRESS;
-    address immutable DAIaddr;
+    uint256 immutable MAXUINT = type(uint256).max-1;
+    IUniswapV3Factory UniFactory;
+    IERC20 DAI;
 
     uint256 public tempId;
 
@@ -25,11 +25,16 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
 
     //// Events
     event NewDealProposed(address indexed _token, uint256 indexed _Tempid);
-    event RefundedNoDeal(uint256 indexed _Tempid, address indexed _token, address _caller);
+    event RefundedNoDeal(
+        uint256 indexed _Tempid,
+        address indexed _token,
+        address _caller
+    );
 
     constructor(address _dai, address _uniV3factory) {
-        UNISWAPV3_ADDRESS = _uniV3factory;
-        DAIaddr = _dai;
+        UniFactory = IUniswapV3Factory(_uniV3factory);
+        DAI = IERC20(_dai);
+        DAI.approve(_uniV3factory, MAXUINT); 
         tempId = 1;
     }
 
@@ -73,7 +78,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         ) {
             cashCowById[tempId] = Cow(
                 [msg.sender, address(0), _projectToken],
-                [_giveAmountx100 * 10 ** 16, _wantsAmountx100 * 10**16],
+                [_giveAmountx100 * 10**16, _wantsAmountx100 * 10**16],
                 [_vestStart, _vestEnd],
                 _pitchDataURL
             );
@@ -89,19 +94,43 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         }
     }
 
+    function takeDeal(uint256 _dealId)
+        public
+        returns (address pool)
+    {
+        require(_dealId != 0, "Deal is zero");
+        Cow memory cow = cashCowById[_dealId];
+        require(cow.owners[1] == address(0), "Deal already taken");
+        require(cow.owners[0] != address(0), "Deal not found");
+        require(DAI.allowance(msg.sender, address(this)) >= cow.amounts[1], "Not enough DAI");
+        require(DAI.transferFrom(msg.sender, address(this), cow.amounts[1]), "Token transfer failed");
+        IERC20(cow.owners[2]).approve(address(UniFactory), MAXUINT); 
 
+        cashCowById[_dealId].owners[1] = msg.sender;
+
+        pool = UniFactory.getPool(cow.owners[2], address(DAI), 10000);
+        if (pool == address(0)) {
+            pool = UniFactory.createPool(cow.owners[2], address(DAI), 10000);
+        }
+
+        return pool;
+    }
+
+    /// @notice Cancel public offering
     function reclaimNone(uint256 _id) public returns (bool s) {
-
         Cow memory cow = cashCowById[_id];
-        require(cow.owners[0] == msg.sender && cow.owners[1] == address(0), "Cow Unreachable");
+        require(
+            cow.owners[0] == msg.sender && cow.owners[1] == address(0),
+            "Cow Unreachable"
+        );
         delete cashCowById[_id];
 
         s = IERC20(cow.owners[2]).transfer(msg.sender, cow.amounts[0]);
         require(s, "Refund Failed");
 
         emit RefundedNoDeal(_id, cow.owners[2], msg.sender);
-
     }
+
     // _setTokenURI(_tempId, "https://cashcow.quest/token/" + _tempId);
 
     /// VIEW FUNCTIONS

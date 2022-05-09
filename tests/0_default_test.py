@@ -33,3 +33,16 @@ def test_creates_deal(CCOW, DAI, VC):
     assert deal[1][0] == 1_000 * 10 ** 16 #project token amount
     assert deal[1][1] == 20 * 10 ** 16 #project token amount
     assert tempId < CCOW.tempId({'from': accounts[0]})
+
+    DAI.approve(CCOW.address, 100000*10**18, {"from": accounts[1]})
+
+
+    pool = CCOW.takeDeal(1, {'from': accounts[1]}).return_value
+    assert pool != ZERO_ADDRESS
+
+
+
+def test_create_uni3pool(CCOW, DAI, VC, IV3Factory):
+    deal = CCOW.getCashCowById(1)
+    
+
