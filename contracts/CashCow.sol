@@ -103,6 +103,9 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         }
     }
 
+    /// @notice Buy in a seed token vesting deal
+    /// @dev _dealId is also the future ID of the deal's NFT 
+    /// @param _dealId deal ID to buy 
     function takeDeal(uint256 _dealId) public returns (address pool) {
         require(_dealId != 0, "DealID 0");
         Cow memory cow = cashCowById[_dealId];
@@ -198,12 +201,27 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     }
 
 
-        /// Override
+    /// Override
 
     function tokenURI(uint256 _tokenId) public view override returns (string memory) {
         return _tokenURIs[_tokenId];
     }
 
-    
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override {
+        if (from != address(0)) require(from == cashCowById[tokenId].owners[1], "Not your token");
+    }
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override {
+        if (from != address(0)) cashCowById[tokenId].owners[1] = to;
+    }
+
 
 }

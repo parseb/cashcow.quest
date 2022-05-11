@@ -68,6 +68,14 @@ def test_creates_deal(CCOW, DAI, VC):
 
     assert interface.IERC20(pool).balanceOf(CCOW.address) > 1
 
+    assert interface.IERC721(CCOW).balanceOf(accounts[1].address) == 1
+    assert CCOW.balanceOf(accounts[1].address, {"from": accounts[4]}) == 1
+    CCOW.safeTransferFrom(accounts[1].address, accounts[4].address, 1, {'from': accounts[1]})
+    assert CCOW.balanceOf(accounts[1].address, {"from": accounts[4]}) == 0
+
+    assert CCOW.ownerOf(1, {"from": accounts[1]}) == accounts[4].address
+
+
 def test_create_uni2pool(CCOW, DAI, VC, IV3Factory):
     pytest.skip("not implemented")
     
