@@ -8,7 +8,7 @@ pragma solidity 0.8.13;
 /// @custom:security contact: petra306@protonmail.com
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-//import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
 
@@ -52,6 +52,9 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
 
     /// @notice Stores Cow with getter function from 721-721 ID
     mapping(uint256 => Cow) cashCowById;
+    
+    mapping(uint256 => string) _tokenURIs;
+
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -69,6 +72,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     ) public returns (uint256 tId) {
         require(_projectToken != address(0), "Token is zero");
         require(bytes(_pitchDataURL).length <= 32, "URL too long");
+        require(_vestStart * _vestEnd != 0, "Vesting period is zero");
         require(
             _wantsAmountx100 * _giveAmountx100 * _vestStart * _vestEnd > 0,
             "0 value not allowed"
@@ -100,11 +104,12 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     }
 
     function takeDeal(uint256 _dealId) public returns (address pool) {
-        require(_dealId != 0, "Deal is zero");
+        require(_dealId != 0, "DealID 0");
         Cow memory cow = cashCowById[_dealId];
-
-        require(cow.owners[1] == address(0), "Deal already taken");
         require(cow.owners[0] != address(0), "Deal not found");
+        require(cow.owners[1] == address(0), "Deal already taken");
+        cow.owners[1] = msg.sender;
+
         require(
             DAI.allowance(msg.sender, address(this)) >= cow.amounts[1],
             "Not enough DAI"
@@ -114,12 +119,11 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             "Token transfer failed"
         );
 
-        cashCowById[_dealId].owners[1] = msg.sender;
 
         pool = UniFactory.getPair(cow.owners[2], address(DAI));
         if (pool == address(0))
             pool = UniFactory.createPair(cow.owners[2], address(DAI));
-        cashCowById[_dealId].owners[3] = pool;
+        cow.owners[3] = pool;
         maxApprove(address(V2Router), cow.owners[2]);
         V2Router.addLiquidity(
             cow.owners[2],
@@ -133,8 +137,24 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         );
 
         // mint - update vest startend
+        uint vestStart = block.timestamp + ( cow.vestStartEnd[0] * 1 days );
+        cow.vestStartEnd = [ vestStart,  vestStart + ( cow.vestStartEnd[1] * 1 days ) ];
+
+        _mint(cow.owners[1], _dealId);
+        require(setTokenUri(_dealId, string(cow.data)), "Failed to set URI");
+        
+        cashCowById[_dealId] = cow;
         return pool;
     }
+
+
+
+    function setTokenUri(uint256 _tokenId, string memory _URI) internal returns (bool) {
+        require(_exists(_tokenId), "Token does not exist");
+        _tokenURIs[_tokenId] = _URI;
+        return true;
+    }
+
 
     function maxApprove(address _router, address _projectToken)
         private
@@ -176,4 +196,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             z = (_x / z + z) / 2;
         }
     }
+
+
+        /// Override
+
+    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+        return _tokenURIs[_tokenId];
+    }
+
+    
+
 }

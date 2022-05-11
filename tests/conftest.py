@@ -3,7 +3,12 @@ import pytest
 from brownie import accounts, CashCow, chain, ZERO_ADDRESS, ValueConduct, interface 
 
 DAI_ADDR = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063" #polygon mainnet
-V3Factory = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+# V3Factory = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+
+sushiV2Router = "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506" #polygon sushi router
+sushiV2Factory = "0xc35DADB65012eC5796536bD9864eD8773aBc74C4" # sushi factory
+
+V3Factory = sushiV2Factory
 
 
 @pytest.fixture
@@ -12,7 +17,7 @@ def isPolygon():
 
 @pytest.fixture
 def CCOW():
-    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, {'from': accounts[0]})
+    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, sushiV2Router, {'from': accounts[0]})
     return deployed1
 
 @pytest.fixture
@@ -29,7 +34,7 @@ def DAI():
 
 @pytest.fixture
 def IV3Factory():
-    factory = interface.IUniswapV3Factory(V3Factory)
+    factory = interface.IUniswapV2Factory(V3Factory)
     return factory
 
 
