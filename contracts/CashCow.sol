@@ -10,13 +10,13 @@ pragma solidity 0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 //import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "../interfaces/IUniswapV3Pool.sol";
-import "../interfaces/IUniswapV3Factory.sol";
+import "../interfaces/IUniswapV2Interfaces.sol";
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
-    uint256 immutable MAXUINT = type(uint256).max-1;
-    IUniswapV3Factory UniFactory;
+    uint256 immutable MAXUINT = type(uint256).max - 1;
+    IUniswapV2Factory UniFactory;
     IERC20 DAI;
+    IUniswapV2Router01 V2Router;
 
     uint256 public tempId;
 
@@ -31,16 +31,21 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address _caller
     );
 
-    constructor(address _dai, address _uniV3factory) {
-        UniFactory = IUniswapV3Factory(_uniV3factory);
+    constructor(
+        address _dai,
+        address _unifactory,
+        address _v2Router
+    ) {
+        UniFactory = IUniswapV2Factory(_unifactory);
+        V2Router = IUniswapV2Router01(_v2Router);
         DAI = IERC20(_dai);
-        DAI.approve(_uniV3factory, MAXUINT); 
+        DAI.approve(_v2Router, MAXUINT);
         tempId = 1;
     }
 
     struct Cow {
-        address[3] owners; //[seller, buyer, projectToken]
-        uint256[2] amounts; //[giveAmount, takeAmount]
+        address[4] owners; //[seller, buyer, projectToken, poolAddress]
+        uint256[2] amounts; //[giveAmountProjectToken, takeAmountDAI]
         uint256[2] vestStartEnd; //[vestStart, vestEnd]
         string data; //url
     }
@@ -77,7 +82,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             )
         ) {
             cashCowById[tempId] = Cow(
-                [msg.sender, address(0), _projectToken],
+                [msg.sender, address(0), _projectToken, address(0)],
                 [_giveAmountx100 * 10**16, _wantsAmountx100 * 10**16],
                 [_vestStart, _vestEnd],
                 _pitchDataURL
@@ -94,26 +99,50 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         }
     }
 
-    function takeDeal(uint256 _dealId)
-        public
-        returns (address pool)
-    {
+    function takeDeal(uint256 _dealId) public returns (address pool) {
         require(_dealId != 0, "Deal is zero");
         Cow memory cow = cashCowById[_dealId];
+
         require(cow.owners[1] == address(0), "Deal already taken");
         require(cow.owners[0] != address(0), "Deal not found");
-        require(DAI.allowance(msg.sender, address(this)) >= cow.amounts[1], "Not enough DAI");
-        require(DAI.transferFrom(msg.sender, address(this), cow.amounts[1]), "Token transfer failed");
-        IERC20(cow.owners[2]).approve(address(UniFactory), MAXUINT); 
+        require(
+            DAI.allowance(msg.sender, address(this)) >= cow.amounts[1],
+            "Not enough DAI"
+        );
+        require(
+            DAI.transferFrom(msg.sender, address(this), cow.amounts[1]),
+            "Token transfer failed"
+        );
 
         cashCowById[_dealId].owners[1] = msg.sender;
 
-        pool = UniFactory.getPool(cow.owners[2], address(DAI), 10000);
-        if (pool == address(0)) {
-            pool = UniFactory.createPool(cow.owners[2], address(DAI), 10000);
-        }
+        pool = UniFactory.getPair(cow.owners[2], address(DAI));
+        if (pool == address(0))
+            pool = UniFactory.createPair(cow.owners[2], address(DAI));
+        cashCowById[_dealId].owners[3] = pool;
+        maxApprove(address(V2Router), cow.owners[2]);
+        V2Router.addLiquidity(
+            cow.owners[2],
+            address(DAI),
+            cow.amounts[0],
+            cow.amounts[1],
+            cow.amounts[0],
+            cow.amounts[0],
+            address(this),
+            block.timestamp
+        );
 
+        // mint - update vest startend
         return pool;
+    }
+
+    function maxApprove(address _router, address _projectToken)
+        private
+        returns (bool)
+    {
+        return
+            DAI.approve(_router, MAXUINT) &&
+            IERC20(_projectToken).approve(_router, MAXUINT);
     }
 
     /// @notice Cancel public offering
@@ -137,5 +166,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
 
     function getCashCowById(uint256 _id) public view returns (Cow memory) {
         return cashCowById[_id];
+    }
+
+    function __sqrt(uint256 _x) internal pure returns (uint256 y) {
+        uint256 z = (_x + 1) / 2;
+        y = _x;
+        while (z < y) {
+            y = z;
+            z = (_x / z + z) / 2;
+        }
     }
 }
