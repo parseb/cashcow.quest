@@ -30,6 +30,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address indexed _token,
         address _caller
     );
+    event LiquidatedDeal(uint256 indexed _dealId, address indexed _token);
 
     constructor(
         address _dai,
@@ -54,14 +55,16 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
 
-
+/// modifiers 
     modifier timeElapsed(uint256 _id) {
-        require(ownerOf(_id) == msg.sender, "Not Owner");
+        require(_exists(_id),"None Found");
         Cow memory cow = cashCowById[_id];
-        require(cow.vestStartEnd[1] <= block.timestamp, "Not Ready");
         require(cow.owners[1] == msg.sender, "Not Owner");
+        require(ownerOf(_id) == msg.sender, "Not Owner");
+        require(cow.vestStartEnd[1] <= block.timestamp, "Not Ready");
         _;
     }
+///
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -115,7 +118,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     /// @param _dealId deal ID to buy
     function takeDeal(uint256 _dealId) external returns (address pool) {
         Cow memory cow = cashCowById[_dealId];
-        
+        require(cow.owners[1] == address(0), "Deal already taken");
+        require(cow.owners[0] != address(0), "Deal not found");
         require(
             DAI.allowance(msg.sender, address(this)) >= cow.amounts[1],
             "Not enough DAI"
@@ -124,7 +128,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             DAI.transferFrom(msg.sender, address(this), cow.amounts[1]),
             "Token transfer failed"
         );
-        require(cow.owners[1] == address(0), "Deal already taken");
 
         cow.owners[1] = msg.sender;
 
@@ -138,15 +141,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         }
 
         cow.owners[3] = pool;
-        (uint A, uint B) = IUniswapV2Pair(pool).token0() == cow.owners[2] ?  (cow.amounts[1], cow.amounts[0]) : (cow.amounts[0], cow.amounts[1]);
-        
+
         V2Router.addLiquidity(
             cow.owners[2],
             address(DAI),
-            A,
-            B,
-            0,
-            0,
+            cow.amounts[0],
+            cow.amounts[1],
+            cow.amounts[0],
+            cow.amounts[1],
             address(this),
             block.timestamp
         );
@@ -159,7 +161,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         ];
         cow.amounts[2] = ofPoolBalance == 0
             ? IERC20(pool).balanceOf(address(this))
-            : ofPoolBalance - IERC20(pool).balanceOf(address(this));
+            : IERC20(pool).balanceOf(address(this)) - ofPoolBalance;
 
         _mint(cow.owners[1], _dealId);
         require(setTokenUri(_dealId, string(cow.data)), "Failed to set URI");
@@ -201,15 +203,23 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         emit RefundedNoDeal(_id, cow.owners[2], msg.sender);
     }
 
-
-    function VestAll(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
-        s = true;
+    /// @notice pump and commit
+    function VestDeal(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
         
     }
 
+    /// @notice liquidate
     function LiquidateDeal(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
-        s= true;
-
+        Cow memory cow = cashCowById[_dealId];
+        cow.owners[1] = address(0);
+        //IERC20(cow.owners[3]).approve(address(V2Router), cow.amounts[2]);
+        uint amount = cow.amounts[2] / 2;
+        s = IERC20(cow.owners[3]).transfer(msg.sender, amount);
+        require (IERC20(cow.owners[3]).transfer(cow.owners[0], amount) && s, "Failed Transfers");
+        
+        emit LiquidatedDeal(_dealId, cow.owners[2]);
+        _burn(_dealId);
+        
     }
 
 
@@ -261,5 +271,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         uint256 tokenId
     ) internal override {
         if (from != address(0)) cashCowById[tokenId].owners[1] = to;
+        if (to == address(0)) delete cashCowById[tokenId];
     }
 }

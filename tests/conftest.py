@@ -36,5 +36,8 @@ def DAI():
 def IV3Factory():
     factory = interface.IUniswapV2Factory(V3Factory)
     return factory
-
-
+    
+@pytest.fixture
+def V2Router():
+    v2 = interface.IUniswapV2Router01(sushiV2Router)
+    return v2
