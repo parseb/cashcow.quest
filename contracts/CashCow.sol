@@ -45,16 +45,23 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
 
     struct Cow {
         address[4] owners; //[seller, buyer, projectToken, poolAddress]
-        uint256[2] amounts; //[giveAmountProjectToken, takeAmountDAI]
+        uint256[3] amounts; //[giveAmountProjectToken, takeAmountDAI, poolTokenBalance]
         uint256[2] vestStartEnd; //[vestStart, vestEnd]
         string data; //url
     }
 
     /// @notice Stores Cow with getter function from 721-721 ID
     mapping(uint256 => Cow) cashCowById;
-    
     mapping(uint256 => string) _tokenURIs;
 
+
+    modifier timeElapsed(uint256 _id) {
+        require(ownerOf(_id) == msg.sender, "Not Owner");
+        Cow memory cow = cashCowById[_id];
+        require(cow.vestStartEnd[1] <= block.timestamp, "Not Ready");
+        require(cow.owners[1] == msg.sender, "Not Owner");
+        _;
+    }
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -69,7 +76,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         uint256 _vestStart,
         uint256 _vestEnd,
         string memory _pitchDataURL
-    ) public returns (uint256 tId) {
+    ) external returns (uint256 tId) {
         require(_projectToken != address(0), "Token is zero");
         require(bytes(_pitchDataURL).length <= 32, "URL too long");
         require(_vestStart * _vestEnd != 0, "Vesting period is zero");
@@ -87,7 +94,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         ) {
             cashCowById[tempId] = Cow(
                 [msg.sender, address(0), _projectToken, address(0)],
-                [_giveAmountx100 * 10**16, _wantsAmountx100 * 10**16],
+                [_giveAmountx100 * 10**16, _wantsAmountx100 * 10**16, 0],
                 [_vestStart, _vestEnd],
                 _pitchDataURL
             );
@@ -104,15 +111,11 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     }
 
     /// @notice Buy in a seed token vesting deal
-    /// @dev _dealId is also the future ID of the deal's NFT 
-    /// @param _dealId deal ID to buy 
-    function takeDeal(uint256 _dealId) public returns (address pool) {
-        require(_dealId != 0, "DealID 0");
+    /// @dev _dealId is also the future ID of the deal's NFT
+    /// @param _dealId deal ID to buy
+    function takeDeal(uint256 _dealId) external returns (address pool) {
         Cow memory cow = cashCowById[_dealId];
-        require(cow.owners[0] != address(0), "Deal not found");
-        require(cow.owners[1] == address(0), "Deal already taken");
-        cow.owners[1] = msg.sender;
-
+        
         require(
             DAI.allowance(msg.sender, address(this)) >= cow.amounts[1],
             "Not enough DAI"
@@ -121,43 +124,58 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             DAI.transferFrom(msg.sender, address(this), cow.amounts[1]),
             "Token transfer failed"
         );
+        require(cow.owners[1] == address(0), "Deal already taken");
 
+        cow.owners[1] = msg.sender;
 
+        uint256 ofPoolBalance;
         pool = UniFactory.getPair(cow.owners[2], address(DAI));
-        if (pool == address(0))
+        if (pool != address(0)) {
+            ofPoolBalance = IERC20(pool).balanceOf(address(this));
+        } else {
             pool = UniFactory.createPair(cow.owners[2], address(DAI));
+            maxApprove(address(V2Router), cow.owners[2]);
+        }
+
         cow.owners[3] = pool;
-        maxApprove(address(V2Router), cow.owners[2]);
+        (uint A, uint B) = IUniswapV2Pair(pool).token0() == cow.owners[2] ?  (cow.amounts[1], cow.amounts[0]) : (cow.amounts[0], cow.amounts[1]);
+        
         V2Router.addLiquidity(
             cow.owners[2],
             address(DAI),
-            cow.amounts[0],
-            cow.amounts[1],
-            cow.amounts[0],
-            cow.amounts[0],
+            A,
+            B,
+            0,
+            0,
             address(this),
             block.timestamp
         );
 
         // mint - update vest startend
-        uint vestStart = block.timestamp + ( cow.vestStartEnd[0] * 1 days );
-        cow.vestStartEnd = [ vestStart,  vestStart + ( cow.vestStartEnd[1] * 1 days ) ];
+        uint256 vestStart = block.timestamp + (cow.vestStartEnd[0] * 1 days);
+        cow.vestStartEnd = [
+            vestStart,
+            vestStart + (cow.vestStartEnd[1] * 1 days)
+        ];
+        cow.amounts[2] = ofPoolBalance == 0
+            ? IERC20(pool).balanceOf(address(this))
+            : ofPoolBalance - IERC20(pool).balanceOf(address(this));
 
         _mint(cow.owners[1], _dealId);
         require(setTokenUri(_dealId, string(cow.data)), "Failed to set URI");
-        
+
         cashCowById[_dealId] = cow;
         return pool;
     }
 
-
-
-    function setTokenUri(uint256 _tokenId, string memory _URI) internal returns (bool) {
+    function setTokenUri(uint256 _tokenId, string memory _URI)
+        internal
+        returns (bool)
+    {
         require(_exists(_tokenId), "Token does not exist");
         _tokenURIs[_tokenId] = _URI;
         return true;
     }
-
 
     function maxApprove(address _router, address _projectToken)
         private
@@ -169,11 +187,11 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     }
 
     /// @notice Cancel public offering
-    function reclaimNone(uint256 _id) public returns (bool s) {
+    function reclaimNoTakers(uint256 _id) external returns (bool s) {
         Cow memory cow = cashCowById[_id];
         require(
             cow.owners[0] == msg.sender && cow.owners[1] == address(0),
-            "Cow Unreachable"
+            "Cow Interrupted"
         );
         delete cashCowById[_id];
 
@@ -182,6 +200,23 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
 
         emit RefundedNoDeal(_id, cow.owners[2], msg.sender);
     }
+
+
+    function VestAll(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
+        s = true;
+        
+    }
+
+    function LiquidateDeal(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
+        s= true;
+
+    }
+
+
+
+
+
+
 
     // _setTokenURI(_tempId, "https://cashcow.quest/token/" + _tempId);
 
@@ -200,10 +235,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         }
     }
 
-
     /// Override
 
-    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+    function tokenURI(uint256 _tokenId)
+        public
+        view
+        override
+        returns (string memory)
+    {
         return _tokenURIs[_tokenId];
     }
 
@@ -212,7 +251,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address to,
         uint256 tokenId
     ) internal override {
-        if (from != address(0)) require(from == cashCowById[tokenId].owners[1], "Not your token");
+        if (from != address(0))
+            require(from == cashCowById[tokenId].owners[1], "Not your token");
     }
 
     function _afterTokenTransfer(
@@ -222,6 +262,4 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     ) internal override {
         if (from != address(0)) cashCowById[tokenId].owners[1] = to;
     }
-
-
 }

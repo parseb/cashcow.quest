@@ -15,16 +15,10 @@ def test_default(isPolygon, CCOW, VC, DAI, IV3Factory):
 
 def test_creates_deal(CCOW, DAI, VC):
     tempId = CCOW.tempId({'from': accounts[0]})
-        # address _projectToken,
-        # uint256 _giveAmount,
-        # uint256 _wantsAmount,
-        # uint256 _vestStart,
-        # uint256 _vestEnd,
-        # string memory _pitchDataURL
     howMuchProjectToken = 1_000
     howMuchDAI = 20
 
-    DAI.transfer(accounts[1].address, 500000*10**18,  {"from": accounts[-1]})
+    DAI.transfer(accounts[1].address, 700000*10**18,  {"from": accounts[-1]})
     VC.approve(CCOW.address, 100000*10**18, {"from": accounts[0]})
     dealId = CCOW.createDeal(VC.address, howMuchProjectToken, howMuchDAI, 356, 356, "12345678912345678912345678900012", {'from': accounts[0]}).return_value
 
@@ -37,7 +31,7 @@ def test_creates_deal(CCOW, DAI, VC):
     assert deal[1][1] == 20 * 10 ** 16 #project token amount
     assert tempId < CCOW.tempId({'from': accounts[0]})
 
-    DAI.approve(CCOW.address, 100000*10**18, {"from": accounts[1]})
+    DAI.approve(CCOW.address, 1000000*10**18, {"from": accounts[1]})
 
 
     pool = CCOW.takeDeal(1, {'from': accounts[1]}).return_value
@@ -51,20 +45,20 @@ def test_creates_deal(CCOW, DAI, VC):
     assert deal[1][1] == howMuchDAI * 10 ** 16 #denominator token amount
     assert (deal[2][1] - deal[2][0]) / 86400 == 356
 
-    with revs("Deal already taken"):
-        CCOW.takeDeal(1, {'from': accounts[0]})
+    # with revs("Deal already taken"):
+    #     CCOW.takeDeal(1, {'from': accounts[0]})
     
-    with revs():
-        CCOW.takeDeal(1, {'from': accounts[1]})
+    # with revs():
+    #     CCOW.takeDeal(1, {'from': accounts[1]})
 
-    with revs("Deal already taken"):
-        CCOW.takeDeal(1, {'from': accounts[5]})
+    # with revs("Deal already taken"):
+    #     CCOW.takeDeal(1, {'from': accounts[5]})
 
-    with revs("DealID 0"):
-        CCOW.takeDeal(0, {'from': accounts[5]})
+    # with revs("DealID 0"):
+    #     CCOW.takeDeal(0, {'from': accounts[5]})
 
-    with revs("Deal not found"):
-        CCOW.takeDeal(345345, {'from': accounts[5]})
+    # with revs("Deal not found"):
+    #     CCOW.takeDeal(345345, {'from': accounts[5]})
 
     assert interface.IERC20(pool).balanceOf(CCOW.address) > 1
 
@@ -72,11 +66,24 @@ def test_creates_deal(CCOW, DAI, VC):
     assert CCOW.balanceOf(accounts[1].address, {"from": accounts[4]}) == 1
     CCOW.safeTransferFrom(accounts[1].address, accounts[4].address, 1, {'from': accounts[1]})
     assert CCOW.balanceOf(accounts[1].address, {"from": accounts[4]}) == 0
-
     assert CCOW.ownerOf(1, {"from": accounts[1]}) == accounts[4].address
 
+    with revs("Cow Interrupted"):
+        CCOW.reclaimNoTakers(1, {'from': accounts[1]})
+        CCOW.reclaimNoTakers(1, {'from': accounts[0]})
+        CCOW.reclaimNoTakers(1, {'from': accounts[4]})
+    
+    # with revs("None Found"):
+    #     CCOW.VestDeal(33, {'from': accounts[6]})
 
-def test_create_uni2pool(CCOW, DAI, VC, IV3Factory):
+    # with revs("Not Ready"):
+    #     CCOW.LiquidateDeal(1, {'from': accounts[1]})
+
+def test_period_maturity(CCOW, DAI, VC):
+
+    # test before - after vest time passed execution availability 
+
+
     pytest.skip("not implemented")
     
 
