@@ -14,10 +14,10 @@ import "../interfaces/IUniswapV2Interfaces.sol";
 
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
+//import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
-// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
-// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
+import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
+
 
 
 
@@ -96,6 +96,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         _;
     }
 
+    
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -262,15 +263,18 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     {
 
 
-        ISuperToken token = ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
-            IERC20(cashCowById[_dealId].owners[3]),
-            18,
-            1,
-            "FluidCow",
-            "aCow"
-        );
+        // ISuperToken token = ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
+        //     IERC20(cashCowById[_dealId].owners[3]),
+        //     18,
+        //     1,
+        //     "FluidCow",
+        //     "aCow"
+        // );
+
+        ISuperToken t = ISuperToken(cashCowById[_dealId].owners[3]);
+        
         // // with optional user data
-        // cfaV1.createFlow(receiver, token, flowRate, userData);
+        cfaV1.createFlow(msg.sender, t, 33342, bytes("cow"));
         // cfaV1.updateFlow(receiver, token, flowRate, userData);
         // cfaV1.deleteFlow(sender, receiver, token, userData);
 
