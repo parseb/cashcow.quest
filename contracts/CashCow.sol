@@ -12,13 +12,22 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
 
+import {ISuperfluid} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {IConstantFlowAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import {IInstantDistributionAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
+import {CFAv1Library} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
+
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     uint256 immutable MAXUINT = type(uint256).max - 1;
     IUniswapV2Factory UniFactory;
     IERC20 DAI;
     IUniswapV2Router01 V2Router;
-
+    address public immutable sweeper;
     uint256 public tempId;
+
+    /// superfluid
+    using CFAv1Library for CFAv1Library.InitData;
+    CFAv1Library.InitData public cfaV1;
 
     //// Errors
     error TokenTransferFailed(address _token, uint256 _amount);
@@ -35,13 +44,27 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     constructor(
         address _dai,
         address _unifactory,
-        address _v2Router
+        address _v2Router,
+        address _sweepTo,
+        address _superfluidHost
     ) {
         UniFactory = IUniswapV2Factory(_unifactory);
         V2Router = IUniswapV2Router01(_v2Router);
         DAI = IERC20(_dai);
         DAI.approve(_v2Router, MAXUINT);
+        sweeper = _sweepTo;
         tempId = 1;
+        ISuperfluid host = ISuperfluid(_superfluidHost);
+
+        cfaV1 = CFAv1Library.InitData(
+        host,
+        //here, we are deriving the address of the CFA using the host contract
+        IConstantFlowAgreementV1(
+            address(host.getAgreementClass(
+                    keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
+                ))
+            )
+        );
     }
 
     struct Cow {
@@ -55,16 +78,17 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
 
-/// modifiers 
+    /// modifiers
     modifier timeElapsed(uint256 _id) {
-        require(_exists(_id),"None Found");
+        require(_exists(_id), "None Found");
         Cow memory cow = cashCowById[_id];
         require(cow.owners[1] == msg.sender, "Not Owner");
         require(ownerOf(_id) == msg.sender, "Not Owner");
         require(cow.vestStartEnd[1] <= block.timestamp, "Not Ready");
         _;
     }
-///
+
+    ///
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -203,46 +227,47 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         emit RefundedNoDeal(_id, cow.owners[2], msg.sender);
     }
 
-    /// @notice pump and commit
-    function VestDeal(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
-        
-    }
-
     /// @notice liquidate
-    function LiquidateDeal(uint256 _dealId) external timeElapsed(_dealId) returns (bool s) {
+    function LiquidateDeal(uint256 _dealId)
+        external
+        timeElapsed(_dealId)
+        returns (bool s)
+    {
         Cow memory cow = cashCowById[_dealId];
         cow.owners[1] = address(0);
         //IERC20(cow.owners[3]).approve(address(V2Router), cow.amounts[2]);
-        uint amount = cow.amounts[2] / 2;
+        uint256 amount = cow.amounts[2] / 2;
         s = IERC20(cow.owners[3]).transfer(msg.sender, amount);
-        require (IERC20(cow.owners[3]).transfer(cow.owners[0], amount) && s, "Failed Transfers");
-        
+        require(
+            IERC20(cow.owners[3]).transfer(cow.owners[0], amount) && s,
+            "Failed Transfers"
+        );
+
         emit LiquidatedDeal(_dealId, cow.owners[2]);
         _burn(_dealId);
-        
     }
 
+    /// @notice pump and commit
+    function VestDeal(uint256 _dealId)
+        external
+        timeElapsed(_dealId)
+        returns (bool s)
+    {
+        // with optional user data
+        // cfaV1.createFlow(receiver, token, flowRate, userData);
+        // cfaV1.updateFlow(receiver, token, flowRate, userData);
+        // cfaV1.deleteFlow(sender, receiver, token, userData);
 
+        // receiver - the address of the receiver
+        // token - the ISuperToken used in the flow
+        // flowRate - an int96 variable which represents the total amount of the token you'd like to send per second, denominated in wei
 
-
-
-
-
-    // _setTokenURI(_tempId, "https://cashcow.quest/token/" + _tempId);
+    }
 
     /// VIEW FUNCTIONS
 
     function getCashCowById(uint256 _id) public view returns (Cow memory) {
         return cashCowById[_id];
-    }
-
-    function __sqrt(uint256 _x) internal pure returns (uint256 y) {
-        uint256 z = (_x + 1) / 2;
-        y = _x;
-        while (z < y) {
-            y = z;
-            z = (_x / z + z) / 2;
-        }
     }
 
     /// Override

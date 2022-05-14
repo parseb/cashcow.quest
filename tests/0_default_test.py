@@ -96,4 +96,7 @@ def test_happy_cow(CCOW, DAI, VC):
     
     CCOW.LiquidateDeal(1, {'from': accounts[4]})
 
+    assert interface.IERC20(pool).balanceOf(accounts[4].address ) >= ( deal[1][2] // 2)
+    assert interface.IERC20(pool).balanceOf(accounts[0].address) >=  ( deal[1][2] // 2)
+
 
