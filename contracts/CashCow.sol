@@ -12,10 +12,14 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
 
-import {ISuperfluid} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
-import {IConstantFlowAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-import {IInstantDistributionAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
-import {CFAv1Library} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
+import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
+import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
+import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
+// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
+// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
+
+
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     uint256 immutable MAXUINT = type(uint256).max - 1;
@@ -28,7 +32,9 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     /// superfluid
     using CFAv1Library for CFAv1Library.InitData;
     CFAv1Library.InitData public cfaV1;
+    address SFtokenFactory;
 
+    
     //// Errors
     error TokenTransferFailed(address _token, uint256 _amount);
 
@@ -46,7 +52,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address _unifactory,
         address _v2Router,
         address _sweepTo,
-        address _superfluidHost
+        address _superfluidHost,
+        address _superfluidTokenFactory
     ) {
         UniFactory = IUniswapV2Factory(_unifactory);
         V2Router = IUniswapV2Router01(_v2Router);
@@ -55,6 +62,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         sweeper = _sweepTo;
         tempId = 1;
         ISuperfluid host = ISuperfluid(_superfluidHost);
+        SFtokenFactory = _superfluidTokenFactory;
 
         cfaV1 = CFAv1Library.InitData(
         host,
@@ -73,7 +81,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         uint256[2] vestStartEnd; //[vestStart, vestEnd]
         string data; //url
     }
-
+    
     /// @notice Stores Cow with getter function from 721-721 ID
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
@@ -88,7 +96,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         _;
     }
 
-    ///
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -253,7 +260,16 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         timeElapsed(_dealId)
         returns (bool s)
     {
-        // with optional user data
+
+
+        ISuperToken token = ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
+            IERC20(cashCowById[_dealId].owners[3]),
+            18,
+            1,
+            "FluidCow",
+            "aCow"
+        );
+        // // with optional user data
         // cfaV1.createFlow(receiver, token, flowRate, userData);
         // cfaV1.updateFlow(receiver, token, flowRate, userData);
         // cfaV1.deleteFlow(sender, receiver, token, userData);
