@@ -14,11 +14,10 @@ import "../interfaces/IUniswapV2Interfaces.sol";
 
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-//import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
+
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
 import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
-
-
+// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
 
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
@@ -33,6 +32,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     using CFAv1Library for CFAv1Library.InitData;
     CFAv1Library.InitData public cfaV1;
     address SFtokenFactory;
+    ISuperfluid host;
 
     
     //// Errors
@@ -61,7 +61,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         DAI.approve(_v2Router, MAXUINT);
         sweeper = _sweepTo;
         tempId = 1;
-        ISuperfluid host = ISuperfluid(_superfluidHost);
+        
+        host = ISuperfluid(_superfluidHost);
         SFtokenFactory = _superfluidTokenFactory;
 
         cfaV1 = CFAv1Library.InitData(
@@ -261,9 +262,20 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         timeElapsed(_dealId)
         returns (bool s)
     {
+        Cow memory cow = cashCowById[_dealId];
 
+        // ISuperTokenFactory TF = ISuperTokenFactory(SFtokenFactory);
+        
+        ISuperTokenFactory factory = host.getSuperTokenFactory(); 
 
-        // ISuperToken token = ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
+        factory.createERC20Wrapper(
+            IERC20(cashCowById[_dealId].owners[3]),
+            18,
+            1,
+            "FluidCow",
+            "aCow"
+        );
+        // ISuperToken t= ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
         //     IERC20(cashCowById[_dealId].owners[3]),
         //     18,
         //     1,
@@ -271,10 +283,11 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         //     "aCow"
         // );
 
-        ISuperToken t = ISuperToken(cashCowById[_dealId].owners[3]);
-        
+        // ISuperToken t = ISuperToken(cow.owners[3]);
+        //int96 tokensPerSecond = cow.amounts[2] / (cow.vestStartEnd[1] - cow.vestStartEnd[0]);
         // // with optional user data
-        cfaV1.createFlow(msg.sender, t, 33342, bytes("cow"));
+        
+        // createFlow(msg.sender, ISuperToken , 33342, bytes("cow"));
         // cfaV1.updateFlow(receiver, token, flowRate, userData);
         // cfaV1.deleteFlow(sender, receiver, token, userData);
 
