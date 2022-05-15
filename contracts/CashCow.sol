@@ -143,7 +143,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             ofPoolBalance = IERC20(pool).balanceOf(address(this));
         } else {
             pool = UniFactory.createPair(cow.owners[2], address(DAI));
-            maxApprove(address(V2Router), cow.owners[2]);
+            maxApprove(address(V2Router), cow.owners[2], pool);
         }
 
         cow.owners[3] = pool;
@@ -185,13 +185,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         return true;
     }
 
-    function maxApprove(address _router, address _projectToken)
+    function maxApprove(address _router, address _projectToken, address _pool)
         private
         returns (bool)
     {
         return
-            DAI.approve(_router, MAXUINT) &&
-            IERC20(_projectToken).approve(_router, MAXUINT);
+            IERC20(_projectToken).approve(address(V2Router), MAXUINT) &&
+            IERC20(_pool).approve(address(V2Router), MAXUINT);
+
     }
 
     /// @notice Cancel public offering
@@ -237,6 +238,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     {
         Cow memory cow = cashCowById[_dealId];
         
+        DAI.approve(address(V2Router), MAXUINT);
+        V2Router.removeLiquidity(cow.owners[2],
+        address(DAI), cow.amounts[2] / 2 , 1, 1, address(this), block.timestamp);
+        address[] memory path = new address[](2);
+        path[0] = address(DAI);
+        path[1] = cow.owners[2];
+
+        V2Router.swapExactTokensForTokens(DAI.balanceOf(address(this)), 1, path , address(this), block.timestamp + 1000);
 
     }
 
@@ -245,6 +254,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     function getCashCowById(uint256 _id) public view returns (Cow memory) {
         return cashCowById[_id];
     }
+
 
     /// Override
 
