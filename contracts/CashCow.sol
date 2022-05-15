@@ -12,13 +12,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
 
-import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
-import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-
-import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
-import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
-// import "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperToken.sol";
-
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     uint256 immutable MAXUINT = type(uint256).max - 1;
@@ -27,12 +20,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     IUniswapV2Router01 V2Router;
     address public immutable sweeper;
     uint256 public tempId;
-
-    /// superfluid
-    using CFAv1Library for CFAv1Library.InitData;
-    CFAv1Library.InitData public cfaV1;
-    address SFtokenFactory;
-    ISuperfluid host;
 
     
     //// Errors
@@ -51,9 +38,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address _dai,
         address _unifactory,
         address _v2Router,
-        address _sweepTo,
-        address _superfluidHost,
-        address _superfluidTokenFactory
+        address _sweepTo
     ) {
         UniFactory = IUniswapV2Factory(_unifactory);
         V2Router = IUniswapV2Router01(_v2Router);
@@ -61,19 +46,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         DAI.approve(_v2Router, MAXUINT);
         sweeper = _sweepTo;
         tempId = 1;
-        
-        host = ISuperfluid(_superfluidHost);
-        SFtokenFactory = _superfluidTokenFactory;
 
-        cfaV1 = CFAv1Library.InitData(
-        host,
-        //here, we are deriving the address of the CFA using the host contract
-        IConstantFlowAgreementV1(
-            address(host.getAgreementClass(
-                    keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
-                ))
-            )
-        );
     }
 
     struct Cow {
@@ -263,37 +236,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         returns (bool s)
     {
         Cow memory cow = cashCowById[_dealId];
-
-        // ISuperTokenFactory TF = ISuperTokenFactory(SFtokenFactory);
         
-        ISuperTokenFactory factory = host.getSuperTokenFactory(); 
-
-        factory.createERC20Wrapper(
-            IERC20(cashCowById[_dealId].owners[3]),
-            18,
-            1,
-            "FluidCow",
-            "aCow"
-        );
-        // ISuperToken t= ISuperTokenFactory(SFtokenFactory).createERC20Wrapper(
-        //     IERC20(cashCowById[_dealId].owners[3]),
-        //     18,
-        //     1,
-        //     "FluidCow",
-        //     "aCow"
-        // );
-
-        // ISuperToken t = ISuperToken(cow.owners[3]);
-        //int96 tokensPerSecond = cow.amounts[2] / (cow.vestStartEnd[1] - cow.vestStartEnd[0]);
-        // // with optional user data
-        
-        // createFlow(msg.sender, ISuperToken , 33342, bytes("cow"));
-        // cfaV1.updateFlow(receiver, token, flowRate, userData);
-        // cfaV1.deleteFlow(sender, receiver, token, userData);
-
-        // receiver - the address of the receiver
-        // token - the ISuperToken used in the flow
-        // flowRate - an int96 variable which represents the total amount of the token you'd like to send per second, denominated in wei
 
     }
 

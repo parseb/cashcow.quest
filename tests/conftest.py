@@ -24,7 +24,7 @@ def isPolygon():
 
 @pytest.fixture
 def CCOW():
-    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, sushiV2Router, sweeper, polygon_superfluidHost, polygon_supertokenfactory, {'from': accounts[0]})
+    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, sushiV2Router, sweeper, {'from': accounts[0]})
     return deployed1
 
 @pytest.fixture

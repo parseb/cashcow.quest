@@ -106,7 +106,6 @@ def test_happy_cow(CCOW, DAI, VC):
     assert sfToken.balanceOf(accounts[4].address) == 0
     CCOW.VestDeal(1, {'from': accounts[4]})
     chain.sleep(3342 * 10)
-    assert sfToken.balanceOf(accounts[4].address) > 0
 
 
 
