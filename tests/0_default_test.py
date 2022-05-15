@@ -93,10 +93,29 @@ def test_happy_cow(CCOW, DAI, VC):
     assert interface.IERC20(pool).balanceOf(accounts[4].address, {"from": accounts[4]}) == 0
     b0_beforeLiquidation = interface.IERC20(deal[0][2]).balanceOf(accounts[4].address, {"from": accounts[4]})
     b1_beforeLiquidation = DAI.balanceOf(accounts[4].address, {"from": accounts[4]})
+    chain.mine(1)
+
+    chain.snapshot()
     
     CCOW.LiquidateDeal(1, {'from': accounts[4]})
-
     assert interface.IERC20(pool).balanceOf(accounts[4].address ) >= ( deal[1][2] // 2)
     assert interface.IERC20(pool).balanceOf(accounts[0].address) >=  ( deal[1][2] // 2)
+
+    chain.revert()
+
+    sfToken = interface.ISuperToken(pool)
+    assert sfToken.balanceOf(accounts[4].address) == 0
+    
+    b1 = DAI.balanceOf(CCOW.address, {"from": accounts[4]})
+    b2 = VC.balanceOf(CCOW.address, {"from": accounts[4]})
+    
+    CCOW.VestDeal(1, {'from': accounts[4]})
+    chain.sleep(3342 * 10)
+
+    b3 = DAI.balanceOf(CCOW.address, {"from": accounts[4]})
+    b4 = VC.balanceOf(CCOW.address, {"from": accounts[4]})
+    
+
+
 
 

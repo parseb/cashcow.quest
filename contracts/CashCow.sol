@@ -12,10 +12,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
 
-import {ISuperfluid} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/superfluid/ISuperfluid.sol";
-import {IConstantFlowAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-import {IInstantDistributionAgreementV1} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
-import {CFAv1Library} from "parseb/protocol-monorepo@brownie-v1.2.2/contracts/apps/CFAv1Library.sol";
 
 contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     uint256 immutable MAXUINT = type(uint256).max - 1;
@@ -25,10 +21,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     address public immutable sweeper;
     uint256 public tempId;
 
-    /// superfluid
-    using CFAv1Library for CFAv1Library.InitData;
-    CFAv1Library.InitData public cfaV1;
-
+    
     //// Errors
     error TokenTransferFailed(address _token, uint256 _amount);
 
@@ -45,8 +38,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         address _dai,
         address _unifactory,
         address _v2Router,
-        address _sweepTo,
-        address _superfluidHost
+        address _sweepTo
     ) {
         UniFactory = IUniswapV2Factory(_unifactory);
         V2Router = IUniswapV2Router01(_v2Router);
@@ -54,17 +46,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         DAI.approve(_v2Router, MAXUINT);
         sweeper = _sweepTo;
         tempId = 1;
-        ISuperfluid host = ISuperfluid(_superfluidHost);
 
-        cfaV1 = CFAv1Library.InitData(
-        host,
-        //here, we are deriving the address of the CFA using the host contract
-        IConstantFlowAgreementV1(
-            address(host.getAgreementClass(
-                    keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
-                ))
-            )
-        );
     }
 
     struct Cow {
@@ -73,7 +55,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         uint256[2] vestStartEnd; //[vestStart, vestEnd]
         string data; //url
     }
-
+    
     /// @notice Stores Cow with getter function from 721-721 ID
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
@@ -88,7 +70,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         _;
     }
 
-    ///
+    
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -161,7 +143,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
             ofPoolBalance = IERC20(pool).balanceOf(address(this));
         } else {
             pool = UniFactory.createPair(cow.owners[2], address(DAI));
-            maxApprove(address(V2Router), cow.owners[2]);
+            maxApprove(address(V2Router), cow.owners[2], pool);
         }
 
         cow.owners[3] = pool;
@@ -203,13 +185,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         return true;
     }
 
-    function maxApprove(address _router, address _projectToken)
+    function maxApprove(address _router, address _projectToken, address _pool)
         private
         returns (bool)
     {
         return
-            DAI.approve(_router, MAXUINT) &&
-            IERC20(_projectToken).approve(_router, MAXUINT);
+            IERC20(_projectToken).approve(address(V2Router), MAXUINT) &&
+            IERC20(_pool).approve(address(V2Router), MAXUINT);
+
     }
 
     /// @notice Cancel public offering
@@ -253,14 +236,16 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         timeElapsed(_dealId)
         returns (bool s)
     {
-        // with optional user data
-        // cfaV1.createFlow(receiver, token, flowRate, userData);
-        // cfaV1.updateFlow(receiver, token, flowRate, userData);
-        // cfaV1.deleteFlow(sender, receiver, token, userData);
+        Cow memory cow = cashCowById[_dealId];
+        
+        DAI.approve(address(V2Router), MAXUINT);
+        V2Router.removeLiquidity(cow.owners[2],
+        address(DAI), cow.amounts[2] / 2 , 1, 1, address(this), block.timestamp);
+        address[] memory path = new address[](2);
+        path[0] = address(DAI);
+        path[1] = cow.owners[2];
 
-        // receiver - the address of the receiver
-        // token - the ISuperToken used in the flow
-        // flowRate - an int96 variable which represents the total amount of the token you'd like to send per second, denominated in wei
+        V2Router.swapExactTokensForTokens(DAI.balanceOf(address(this)), 1, path , address(this), block.timestamp + 1000);
 
     }
 
@@ -269,6 +254,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     function getCashCowById(uint256 _id) public view returns (Cow memory) {
         return cashCowById[_id];
     }
+
 
     /// Override
 

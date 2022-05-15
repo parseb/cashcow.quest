@@ -12,14 +12,19 @@ V3Factory = sushiV2Factory
 sweeper = "0xe7b30a037f5598e4e73702ca66a59af5cc650dcd"
 
 polygon_superfluidHost = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7"
+polygon_supertokenfactory = "0x2C90719f25B10Fc5646c82DA3240C76Fa5BcCF34"
+
+
 arbitrum_superfluidhost = "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192"
+arbitrum_supertokenfactory = "0x1C21Ead77fd45C84a4c916Db7A6635D0C6FF09D6"
+
 @pytest.fixture
 def isPolygon():
     return chain.id == 137
 
 @pytest.fixture
 def CCOW():
-    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, sushiV2Router, sweeper, polygon_superfluidHost, {'from': accounts[0]})
+    deployed1 = CashCow.deploy(DAI_ADDR, V3Factory, sushiV2Router, sweeper, {'from': accounts[0]})
     return deployed1
 
 @pytest.fixture
