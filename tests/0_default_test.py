@@ -15,8 +15,8 @@ def test_default(isPolygon, CCOW, VC, DAI, IV3Factory):
 
 def test_happy_cow(CCOW, DAI, VC):
     tempId = CCOW.tempId({'from': accounts[0]})
-    howMuchProjectToken = 1_000
-    howMuchDAI = 20
+    howMuchProjectToken = 1_000_000
+    howMuchDAI = 20_000
 
     DAI.transfer(accounts[1].address, 700000*10**18,  {"from": accounts[-1]})
     VC.approve(CCOW.address, 100000*10**18, {"from": accounts[0]})
@@ -27,8 +27,8 @@ def test_happy_cow(CCOW, DAI, VC):
     assert deal[0][0] == accounts[0] #deal creator
     assert deal[0][1] == ZERO_ADDRESS #deal taker - deal open
     assert deal[0][2] == VC.address #proposed token
-    assert deal[1][0] == 1_000 * 10 ** 16 #project token amount
-    assert deal[1][1] == 20 * 10 ** 16 #project token amount
+    assert deal[1][0] == howMuchProjectToken * 10 ** 16 #project token amount
+    assert deal[1][1] == howMuchDAI * 10 ** 16 #project token amount
     assert tempId < CCOW.tempId({'from': accounts[0]})
     
     DAI.approve(CCOW.address, 1000000*10**18, {"from": accounts[1]})
@@ -81,7 +81,7 @@ def test_happy_cow(CCOW, DAI, VC):
         CCOW.LiquidateDeal(1, {'from': accounts[4]})
 
 
-    chain.sleep(356 * 2 * 86400)
+    chain.sleep(356 * 86400)
     chain.mine(1)
 
     with revs("None Found"):
@@ -109,12 +109,24 @@ def test_happy_cow(CCOW, DAI, VC):
     b1 = DAI.balanceOf(CCOW.address, {"from": accounts[4]})
     b2 = VC.balanceOf(CCOW.address, {"from": accounts[4]})
     
-    CCOW.VestDeal(1, {'from': accounts[4]})
-    chain.sleep(3342 * 10)
+    x = CCOW.VestDeal(1, {'from': accounts[4]}).return_value
+    vest =  CCOW.getVest(deal[0][2], accounts[4].address, {'from': accounts[4]})
+    k = CCOW.getK()
+    willFullVestBy = vest % k
+    assert willFullVestBy // deal[2][1]  <= 1 
+    milk0 = interface.IERC20(deal[0][2]).balanceOf(accounts[4].address)
+    y = CCOW.milkVest(1, {'from': accounts[4]}).return_value
+    milk1 = interface.IERC20(deal[0][2]).balanceOf(accounts[4].address)
+    milk0 == 0
+
+    assert x and y
+    milk2 = interface.IERC20(deal[0][2]).balanceOf(accounts[4].address)
+    assert milk2 == milk1
 
     b3 = DAI.balanceOf(CCOW.address, {"from": accounts[4]})
     b4 = VC.balanceOf(CCOW.address, {"from": accounts[4]})
     
+    assert b3 == b1_beforeLiquidation + b2
 
 
 

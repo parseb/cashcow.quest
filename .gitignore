@@ -6,3 +6,30 @@ build/
 reports/
 
 node_modules/
+
+# Ignore bundler config.
+/cow-app/.bundle
+
+# Ignore the default SQLite database.
+/cow-app/db/*.sqlite3
+/cow-app/db/*.sqlite3-*
+
+# Ignore all logfiles and tempfiles.
+/cow-app/log/*
+/cow-app/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore pidfiles, but keep the directory.
+/cow-app/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+
+# Ignore uploaded files in development.
+/cow-app/storage/*
+!/storage/.keep
+/cow-app/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+
+/cow-app/public/assets

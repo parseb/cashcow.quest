@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.13;
+pragma solidity 0.8.11;
 
 /// @title CashCow.quest main
 /// @author parseb.eth
@@ -11,9 +11,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "../interfaces/IUniswapV2Interfaces.sol";
+import 'parseb/vest_minimal@0.0.6-alpha/src/MiniVest.sol';
 
+uint256 constant k = 999999999999999999 * 10 **18;
 
-contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
+contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     uint256 immutable MAXUINT = type(uint256).max - 1;
     IUniswapV2Factory UniFactory;
     IERC20 DAI;
@@ -66,7 +68,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         Cow memory cow = cashCowById[_id];
         require(cow.owners[1] == msg.sender, "Not Owner");
         require(ownerOf(_id) == msg.sender, "Not Owner");
-        require(cow.vestStartEnd[1] <= block.timestamp, "Not Ready");
+        require(cow.vestStartEnd[0] <= block.timestamp, "Not Ready");
         _;
     }
 
@@ -87,7 +89,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
         string memory _pitchDataURL
     ) external returns (uint256 tId) {
         require(_projectToken != address(0), "Token is zero");
-        require(bytes(_pitchDataURL).length <= 32, "URL too long");
+        require(bytes(_pitchDataURL).length <= 64, "URL too long");
         require(_vestStart * _vestEnd != 0, "Vesting period is zero");
         require(
             _wantsAmountx100 * _giveAmountx100 * _vestStart * _vestEnd > 0,
@@ -238,21 +240,77 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ") {
     {
         Cow memory cow = cashCowById[_dealId];
         
-        DAI.approve(address(V2Router), MAXUINT);
-        V2Router.removeLiquidity(cow.owners[2],
+        // DAI.approve(address(V2Router), MAXUINT);
+
+        (uint256 b, uint256 a) = V2Router.removeLiquidity(cow.owners[2],
         address(DAI), cow.amounts[2] / 2 , 1, 1, address(this), block.timestamp);
+
         address[] memory path = new address[](2);
         path[0] = address(DAI);
         path[1] = cow.owners[2];
 
-        V2Router.swapExactTokensForTokens(DAI.balanceOf(address(this)), 1, path , address(this), block.timestamp + 1000);
+        uint256[] memory afterSwapAmounts = V2Router.swapExactTokensForTokens(DAI.balanceOf(address(this)), 1, path , address(this), block.timestamp + 1000);
+        b += afterSwapAmounts[1];
+        require(DAI.balanceOf(address(this)) == 0, "DAI not empty");
 
+        uint256 daysToVestOver = cow.vestStartEnd[1] < block.timestamp ? 1 : (( cow.vestStartEnd[1] - block.timestamp ) / 86400) + 1;
+        cashCowById[_dealId].amounts = [b,0,0];
+        // 10**16
+        setVest(cow.owners[2], ownerOf(_dealId), b, daysToVestOver);
+
+        s= vestings[cow.owners[2]][msg.sender] > b; // b * k 
+        require(s, "Vest failed");
+
+        // function setVest(address _token, 
+        //             address _beneficiary, 
+        //             uint256 _amount, 
+        //             uint256 _days) 
+        //             internal virtual
+        //             returns (bool s)
     }
+
+
+
+
+    /// @notice create vesting agreement
+    /// @param _token ERC20 token contract address to be vested
+    /// @param _beneficiary beneficiary of the vesting agreement
+    /// @param _amount amount of tokens to be vested for over period
+    /// @param _days durration of vestion period in days
+    function setVest(address _token, 
+                    address _beneficiary, 
+                    uint256 _amount, 
+                    uint256 _days) 
+                    internal override
+                    returns (bool s)  {
+
+        if (vestings[_token][_beneficiary] != 0) revert VestingInProgress(_token, _beneficiary);
+
+        require(_amount * _days > 1, "Amount must be greater than 0");
+        require(_beneficiary != address(0), "Beneficiary is 0");
+        require(_amount < k, "Max amount is k-1");
+
+        vestings[_token][_beneficiary] = (_amount / (10**18)) * k + ( _days * 1 days + block.timestamp );
+
+        emit NewVesting(_token, _beneficiary, _amount, _days);
+        s = vestings[_token][_beneficiary] > k;
+    }
+
+    function milkVest(uint256 _dealId) external returns (bool s) {
+        Cow memory cow = cashCowById[_dealId];
+        s = withdrawAvailable(cow.owners[2]);
+        if  (s && (vestings[cow.owners[2]][msg.sender] == 0 )) _burn(_dealId); 
+    }
+
 
     /// VIEW FUNCTIONS
 
-    function getCashCowById(uint256 _id) public view returns (Cow memory) {
+    function getCashCowById(uint256 _id) external view returns (Cow memory) {
         return cashCowById[_id];
+    }
+
+    function getK() external view returns (uint256) {
+        return k;
     }
 
 
