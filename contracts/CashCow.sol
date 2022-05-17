@@ -89,7 +89,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
         string memory _pitchDataURL
     ) external returns (uint256 tId) {
         require(_projectToken != address(0), "Token is zero");
-        require(bytes(_pitchDataURL).length <= 32, "URL too long");
+        require(bytes(_pitchDataURL).length <= 64, "URL too long");
         require(_vestStart * _vestEnd != 0, "Vesting period is zero");
         require(
             _wantsAmountx100 * _giveAmountx100 * _vestStart * _vestEnd > 0,
