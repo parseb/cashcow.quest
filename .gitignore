@@ -33,3 +33,5 @@ node_modules/
 !/tmp/storage/.keep
 
 /cow-app/public/assets
+
+master.key
