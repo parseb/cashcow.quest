@@ -62,6 +62,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
 
+    Cow[] public floatingCows;
+
     /// modifiers
     modifier timeElapsed(uint256 _id) {
         require(_exists(_id), "None Found");
@@ -110,11 +112,14 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
                 _pitchDataURL
             );
 
+            floatingCows.push(cashCowById[tId]);
+
             tId = tempId;
             unchecked {
                 tempId++;
             }
 
+            
             emit NewDealProposed(_projectToken, tId);
         } else {
             revert TokenTransferFailed(_projectToken, _giveAmountx100 * 10**16);
