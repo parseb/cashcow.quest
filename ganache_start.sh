@@ -1,0 +1,2 @@
+ganache-cli --chain.vmErrorsOnRPCResponse true --server.port 8545 --miner.blockGasLimit 20000000 --wallet.totalAccounts 10 --hardfork istanbul --wallet.mnemonic brownie --wallet.unlockedAccounts 0xb3F204a5F3dabef6bE51015fD57E307080Db6498 --wallet.unlockedAccounts 0x7Dd1CFBed7723DfE959EE776b18C5E1490993297 --wallet.unlockedAccounts 0xe7b30a037f5598e4e73702ca66a59af5cc650dcd --wallet.unlockedAccounts 0x075e72a5edf65f0a5f44699c7654c1a76941ddc8  --fork.url $ALCHEMY_POLYGON_MAIN --chain.chainId 137
+
