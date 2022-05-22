@@ -1,0 +1,25 @@
+<h2>CashCow.quest </h2>
+<h3> About </h3>
+<b> CashCow.Quest </b> is a seed stage Venture Capital protocol that aims to faciliate the asyncronous creation of predictable and liquid agreements for both ends of the deal.
+<hr>
+
+<h4>Some random reasons:</h4>
+- people should be able to invest in other people's ideas <br>
+- traditional VC is structurally heavy <br>
+- VC centralization is a security vulnerability <br>
+- speed and turnover inefficiencies <br>
+* penalize pump and dump as raison d'etre <br>
+* socialized solutions to common needs <br>
+* quality of life > capital efficiency: ++likelyhood <br>
+* financing non-externalizable or localized (Public) Goods
+
+<br>
+<hr>
+<h3> How it works </h3>
+
+
+
+<br>
+<hr>
+<h3> How to run tests<h3>
+Clone -> `` brownie test --network polygon-mai-fork `` should do 
