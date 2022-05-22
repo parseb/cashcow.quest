@@ -17,6 +17,7 @@
 <hr>
 <h3> How it works </h3>
 
+![image](https://user-images.githubusercontent.com/5999852/169695804-36474dbc-f435-44ab-818f-a2a17a16eaf5.png)
 
 
 <br>
