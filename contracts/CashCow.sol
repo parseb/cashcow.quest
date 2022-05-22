@@ -62,7 +62,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     mapping(uint256 => Cow) cashCowById;
     mapping(uint256 => string) _tokenURIs;
 
-
     /// modifiers
     modifier timeElapsed(uint256 _id) {
         require(_exists(_id), "None Found");
@@ -73,7 +72,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
         _;
     }
 
-    
 
     /// @notice Proposes a new deal
     /// @param _projectToken address of offered token
@@ -214,7 +212,8 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
         emit RefundedNoDeal(_id, cow.owners[2], msg.sender);
     }
 
-    /// @notice liquidate
+    /// @notice 
+    /// @param _dealId id of cow to splitsville
     function LiquidateDeal(uint256 _dealId)
         external
         timeElapsed(_dealId)
@@ -222,7 +221,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     {
         Cow memory cow = cashCowById[_dealId];
         cow.owners[1] = address(0);
-        //IERC20(cow.owners[3]).approve(address(V2Router), cow.amounts[2]);
         uint256 amount = cow.amounts[2] / 2;
         s = IERC20(cow.owners[3]).transfer(msg.sender, amount);
         require(
@@ -235,14 +233,13 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     }
 
     /// @notice pump and commit
+    /// @param _deaId id of the deal to pump and vest
     function VestDeal(uint256 _dealId)
         external
         timeElapsed(_dealId)
         returns (bool s)
     {
         Cow memory cow = cashCowById[_dealId];
-        
-        // DAI.approve(address(V2Router), MAXUINT);
 
         (uint256 b, uint256 a) = V2Router.removeLiquidity(cow.owners[2],
         address(DAI), cow.amounts[2] / 2 , 1, 1, address(this), block.timestamp);
@@ -263,12 +260,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
         s= vestings[cow.owners[2]][msg.sender] > b; // b * k 
         require(s, "Vest failed");
 
-        // function setVest(address _token, 
-        //             address _beneficiary, 
-        //             uint256 _amount, 
-        //             uint256 _days) 
-        //             internal virtual
-        //             returns (bool s)
     }
 
 
