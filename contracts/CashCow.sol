@@ -233,7 +233,6 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
     }
 
     /// @notice pump and commit
-    /// @param _deaId id of the deal to pump and vest
     function VestDeal(uint256 _dealId)
         external
         timeElapsed(_dealId)
