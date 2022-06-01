@@ -2,7 +2,9 @@
 <h3> About </h3>
 <b> CashCow.Quest </b> is a seed stage Venture Capital protocol that aims to faciliate the asyncronous creation of predictable and liquid agreements for both ends of the deal.
 <hr>
-🥉 Uniswap Grants Program — Most Innovative - HackMoney 2022
+<b>HackMoney 2022</b> <br>
+🥉 Uniswap Grants Program — Most Innovative <br>
+🥈 Covalent — Best Use
 <hr>
 
 
