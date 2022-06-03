@@ -6,8 +6,12 @@
 🥉 Uniswap Grants Program — Most Innovative <br>
 🥈 Covalent — Best Use
 <hr>
+<br>
+WIP (mumbai)
+https://www.cashcow.quest/ 
 
-
+<br>
+<hr>
 <h4>Some random reasons:</h4>
 - people should be able to invest in other people's ideas <br>
 - traditional VC is structurally heavy <br>
