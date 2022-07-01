@@ -111,7 +111,7 @@ contract CashCow is ERC721("Cash Cow Quest", "COWQ"), MiniVest(k) {
 
             tId = tempId;
             unchecked {
-                tempId++;
+                ++tempId;
             }
 
             
