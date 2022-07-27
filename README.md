@@ -1,10 +1,7 @@
 <h2>CashCow.quest </h2>
 <h3> About </h3>
 <b> CashCow.Quest </b> is a seed stage Venture Capital protocol that aims to faciliate the asyncronous creation of predictable and liquid agreements for both ends of the deal.
-<hr>
-<b>HackMoney 2022</b> <br>
-🥉 Uniswap Grants Program — Most Innovative <br>
-🥈 Covalent — Best Use
+
 <hr>
 <br>
 WIP (mumbai)
@@ -35,6 +32,10 @@ https://www.cashcow.quest/
 Clone -> `` brownie test --network polygon-mai-fork `` should do 
 
 ____
+<hr>
+<b>HackMoney 2022</b> <br>
+🥉 Uniswap Grants Program — Most Innovative <br>
+🥈 Covalent — Best Use
 
 ![image](https://user-images.githubusercontent.com/5999852/177880726-98080c7d-2b4e-41ec-ae7e-da9334a218b6.png)
 
