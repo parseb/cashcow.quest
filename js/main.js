@@ -1203,7 +1203,7 @@ async function fetchAccountData() {
 
 async function retrieveAllCows(C_contract) {
   /// aware
-  fetch("https://api.covalenthq.com/v1/80001/tokens/0x4A35E3C88438e8e6eEdB1Ea31fe34be2D4234200/nft_token_ids/?quote-currency=USD&format=JSON&page-number=&page-size=&key=ckey_dd30be32fd7244ebaf9cc39ae10")
+  fetch(`https://api.covalenthq.com/v1/80001/tokens/0x4A35E3C88438e8e6eEdB1Ea31fe34be2D4234200/nft_token_ids/?quote-currency=USD&format=JSON&page-number=&page-size=&key=${COVALENT_API_KEY}`)
   .then(response => response.json()).then(data => {
     console.log("covalent nft ids", data);
     let index = parseInt(data.data.items.length -1);
